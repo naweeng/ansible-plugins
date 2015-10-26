@@ -54,11 +54,26 @@ def fetch_starttime(region,pipelineName):
     	for o in refinedObjectList:
     		return o['stringValue']
 
+# Create a S3 lifecycle expiry rule
+# Example for prefix : '/backup-script/*/*.sql'
+def s3_expiration(region,bucket_name,days,prefix,rule_name):
+    conn = boto.connect_s3()
+    bucket = conn.get_bucket(bucket_name)
+
+    expiry = Expiration(days=days)
+    rule = Rule(rule_name, prefix, 'Enabled', expiration=expiry)
+    lifecycle = Lifecycle()
+    lifecycle.append(rule)
+
+    output = bucket.configure_lifecycle(lifecycle)
+    return output
+
 class FilterModule(object):
     def filters(self):
         return {
             "get_sg_name": get_sg_name,
             "get_instance_private_ip": get_instance_private_ip,
             "get_instance_elastic_ip": get_instance_elastic_ip,
-            "fetch_starttime": fetch_starttime
+            "fetch_starttime": fetch_starttime,
+            "s3_expiration": s3_expiration
         }
