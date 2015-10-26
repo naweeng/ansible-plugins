@@ -34,11 +34,31 @@ def get_instance_elastic_ip(region,instance_name):
 	    if addr.instance_id == instance_id:
             return addr.public_ip
 
+# Get the starttime for an existing pipeline.
+def fetch_starttime(region,pipelineName):
+    conn = boto.datapipeline.connect_to_region(region)
+    pipelineId = False
+    pipelines = conn.list_pipelines()
+    pipelinelist = pipelines['pipelineIdList']
+    for p in pipelinelist:
+        if p['name'] == pipelineName:
+            pipelineId = p['id']
+
+    object_id = ['Schedule']
+    if not pipelineId:
+        return False
+    else:
+        result = conn.describe_objects(object_id, pipelineId)
+    	objectsList = result['pipelineObjects'][0]['fields']
+    	refinedObjectList = filter(lambda objects: objects['key'] == 'startDateTime', objectsList)
+    	for o in refinedObjectList:
+    		return o['stringValue']
 
 class FilterModule(object):
     def filters(self):
         return {
             "get_sg_name": get_sg_name,
             "get_instance_private_ip": get_instance_private_ip,
-            "get_instance_elastic_ip": get_instance_elastic_ip
+            "get_instance_elastic_ip": get_instance_elastic_ip,
+            "fetch_starttime": fetch_starttime
         }
