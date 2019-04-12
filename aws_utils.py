@@ -68,6 +68,45 @@ def s3_expiration(region,bucket_name,days,prefix,rule_name):
     output = bucket.configure_lifecycle(lifecycle)
     return output
 
+def get_stopped_instances(aws_region):
+    stopped_instance_list = []
+    try:
+        ec2 = boto3.resource('ec2', region_name=aws_region)
+        instances = ec2.instances.filter(
+            Filters=[{'Name': 'instance-state-name', 'Values': ['stopped']}])
+        for instance in instances:
+            stopped_instance_list.append(instance.id)
+    except Exception as e:
+        print (e)
+    return stopped_instance_list
+
+def get_running_ips(aws_region):
+    ##### Get all regions
+    ec2 = boto3.client('ec2', region_name='us-east-1')
+    regionList = []
+    response = ec2.describe_regions()
+    regions = response['Regions']
+    for r in regions:
+        regionList.append(r['RegionName'])
+
+    ##### Get running IPs for all regions
+    running_ips = []
+    for region in regionList:
+        ec2 = boto3.client('ec2', region_name=region)
+        reservations = ec2.describe_instances()['Reservations']
+        for reservation in reservations:
+            for instance in reservation['Instances']:
+                try:
+                    if instance['State']['Name'] == 'running':
+                        if 'VpcId' in instance:
+                            running_ips.append(instance['PrivateIpAddress'])
+                        else:
+                            running_ips.append(instance['PublicIpAddress'])
+                except:
+                        pass
+
+    return running_ips
+
 class FilterModule(object):
     def filters(self):
         return {
@@ -75,5 +114,7 @@ class FilterModule(object):
             "get_instance_private_ip": get_instance_private_ip,
             "get_instance_elastic_ip": get_instance_elastic_ip,
             "fetch_starttime": fetch_starttime,
-            "s3_expiration": s3_expiration
+            "s3_expiration": s3_expiration,
+	    "get_stopped_instances": get_stopped_instances,
+	    "get_running_ips": get_running_ips
         }
